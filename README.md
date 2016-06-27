@@ -3,6 +3,12 @@
 Generic threadsafe and exception-safe resource management.
 
 ```clojure
+[thinktopic/resource "1.0.0"]
+
+
+(require '[resource.core :as resource])
+
+
 (extend-protocol resource/PResource
   RandomAccessFile
   (release-resource [^RandomAccessFile item] (.close item)))
