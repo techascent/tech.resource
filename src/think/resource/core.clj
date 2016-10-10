@@ -1,4 +1,4 @@
-(ns resource.core)
+(ns think.resource.core)
 
 
 (defprotocol PResource
@@ -24,7 +24,7 @@
 
 
 (defn ignore-resources
-  "Ignore these resources for which pred returns trueand do not track them.
+  "Ignore these resources for which pred returns true and do not track them.
   They will not be released unless added again with track"
   [pred]
   (swap! *resource-context* #(remove pred %)))
