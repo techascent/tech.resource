@@ -16,9 +16,14 @@
 
 (defonce ^:dynamic *resource-context* (atom (list)))
 
+(def ^:dynamic *resource-debug-double-free* nil)
+
 (defn track
   "Begin tracking this resource. Resource be released when current resource context ends"
   [item]
+  (when (and *resource-debug-double-free*
+             (some #(identical? item %) @*resource-context*))
+    (throw (ex-info "Duplicate track detected; this will result in a double free" {:item item})))
   (swap! *resource-context* conj item)
   item)
 
@@ -73,6 +78,30 @@ released when the context ends."
        ~@body
        (finally
          (release-all)))))
+
+
+(defmacro return-resource-context
+  "Run code an return both the return value and the resources the code created.
+  [retval res-context]"
+  [& body]
+  `(with-bindings {#'*resource-context* (atom (list))}
+     (try
+      (let [retval# (do ~@body)]
+        [retval# @*resource-context*])
+      (catch Throwable e#
+        (release-all)
+        (throw e#)))))
+
+
+(defn release-resource-context
+  "Release a resource context returned from return-resource-context."
+  [res-ctx]
+  (->> res-ctx
+       (mapv (fn [item]
+               (try
+                 (do-release item)
+                 nil
+                 (catch Throwable e e))))))
 
 
 (defn safe-create
