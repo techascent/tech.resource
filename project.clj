@@ -1,4 +1,4 @@
-(defproject thinktopic/resource "1.1.0"
+(defproject thinktopic/think.resource "1.2.0"
   :description "Exception-safe threadsafe resource management"
   :url "http://github.com/thinktopic/resource"
   :license {:name "Eclipse Public License"

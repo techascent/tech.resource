@@ -3,10 +3,10 @@
 Generic threadsafe and exception-safe resource management.
 
 ```clojure
-[thinktopic/resource "1.0.0"]
+[thinktopic/think.resource "1.2.0"]
 
 
-(require '[resource.core :as resource])
+(require '[think.resource.core :as resource])
 
 
 (extend-protocol resource/PResource
