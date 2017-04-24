@@ -82,7 +82,7 @@ released when the context ends."
 
 (defmacro return-resource-context
   "Run code an return both the return value and the resources the code created.
-  [retval res-context]"
+  Returns [retval res-context]."
   [& body]
   `(with-bindings {#'*resource-context* (atom (list))}
      (try
