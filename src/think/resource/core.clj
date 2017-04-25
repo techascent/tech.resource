@@ -32,7 +32,7 @@
   "Ignore these resources for which pred returns true and do not track them.
   They will not be released unless added again with track"
   [pred]
-  (swap! *resource-context* #(remove pred %)))
+  (swap! *resource-context* #(doall (remove pred %))))
 
 
 (defn ignore
