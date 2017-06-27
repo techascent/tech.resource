@@ -3,7 +3,7 @@
 Generic threadsafe and exception-safe resource management.
 
 ```clojure
-[thinktopic/think.resource "1.2.0"]
+[thinktopic/think.resource "1.2.1"]
 
 
 (require '[think.resource.core :as resource])
