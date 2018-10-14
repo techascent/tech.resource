@@ -1,5 +1,8 @@
 # tech.resource
 
+[![Clojars Project](https://img.shields.io/clojars/v/techascent/tech.resource.svg)](https://clojars.org/techascent/tech.resource)
+
+
 Generic thread-safe and exception-safe resource management.
 
 
