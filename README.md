@@ -1,14 +1,9 @@
-# resource
+# tech.resource
 
-Generic threadsafe and exception-safe resource management.
+Generic thread-safe and exception-safe resource management.
+
 
 ```clojure
-[thinktopic/think.resource "1.2.1"]
-
-
-(require '[think.resource.core :as resource])
-
-
 (extend-protocol resource/PResource
   RandomAccessFile
   (release-resource [^RandomAccessFile item] (.close item)))
@@ -34,4 +29,4 @@ Generic threadsafe and exception-safe resource management.
 ```
 
 Distributed under the Eclipse Public License either version 1.0 or (at
-your option) any later version.  Complements of ThinkTopic, LLC.
+your option) any later version.  Complements of Tech Ascent, LLC.

@@ -1,4 +1,4 @@
-(ns think.resource.core)
+(ns tech.resource)
 
 
 (defprotocol PResource
@@ -23,7 +23,8 @@
   [item]
   (when (and *resource-debug-double-free*
              (some #(identical? item %) @*resource-context*))
-    (throw (ex-info "Duplicate track detected; this will result in a double free" {:item item})))
+    (throw (ex-info "Duplicate track detected; this will result in a double free"
+                    {:item item})))
   (swap! *resource-context* conj item)
   item)
 
@@ -50,23 +51,35 @@
     (do-release item)))
 
 
-(defn release-all
+(defn release-resource-seq
+  "Release a resource context returned from return-resource-context."
+  [res-ctx & {:keys [pred]
+              :or {pred identity}}]
+  (->> res-ctx
+       (filter pred)
+       ;;Avoid holding onto head.
+       (map (fn [item]
+              (try
+                (do-release item)
+                nil
+                (catch Throwable e e))))
+       doall))
+
+
+(defn release-current-resources
   "Release all resources matching either a predicate or all resources currently tracked.
 Returns any exceptions that happened during release but continues to attempt to release
 anything else in the resource list."
   ([pred]
    (loop [cur-resources @*resource-context*]
-     (if-not (compare-and-set! *resource-context* cur-resources (remove pred cur-resources))
+     (if-not (compare-and-set! *resource-context* cur-resources
+                               ;;Laziness is not a friend here.
+                               (->> (remove pred cur-resources)
+                                    doall))
        (recur @*resource-context*)
-       (filter identity
-               (mapv (fn [item]
-                       (try
-                         (do-release item)
-                         nil
-                         (catch Throwable e e)))
-                     (filter pred cur-resources))))))
+       (release-resource-seq cur-resources))))
   ([]
-   (release-all (constantly true))))
+   (release-current-resources (constantly true))))
 
 
 (defmacro with-resource-context
@@ -77,39 +90,40 @@ released when the context ends."
      (try
        ~@body
        (finally
-         (release-all)))))
+         (release-current-resources)))))
 
 
 (defmacro return-resource-context
   "Run code an return both the return value and the resources the code created.
-  Returns [retval res-context]."
+  Returns [retval resource-seq].  Note these resources will need to be released."
   [& body]
   `(with-bindings {#'*resource-context* (atom (list))}
      (try
       (let [retval# (do ~@body)]
         [retval# @*resource-context*])
       (catch Throwable e#
-        (release-all)
+        (release-current-resources)
         (throw e#)))))
 
 
-(defn release-resource-context
-  "Release a resource context returned from return-resource-context."
-  [res-ctx]
-  (->> res-ctx
-       (mapv (fn [item]
-               (try
-                 (do-release item)
-                 nil
-                 (catch Throwable e e))))))
+(defrecord Releaser [release-fn!]
+  PResource
+  (release-resource [item] (release-fn!)))
+
+
+(defn make-resource
+  "Make a releaser out of an arbitrary closure"
+  [release-fn!]
+  (-> (->Releaser release-fn!)
+      track))
 
 
 (defn safe-create
   "Create a resource and assign it to an atom.  Allows threadsafe implementation of
-singelton type resources.  Implementations need to take care that in the case of conflict
-their resource may be destroyed when the atom has not been set yet so their release-resource
-implementation needs to use compare-and-set! instead of reset! in order to clear the
-atom"
+  singelton type resources.  Implementations need to take care that in the case of
+  conflict their resource may be destroyed when the atom has not been set yet so their
+  release-resource implementation needs to use compare-and-set! instead of reset! in
+  order to clear the atom"
   [resource-atom create-fn]
   (loop [retval @resource-atom]
     (if-not retval
