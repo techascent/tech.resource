@@ -7,10 +7,12 @@
     (resource/with-resource-context
       (resource/make-resource #(swap! result-atom dec)))
     (is (= 0 @result-atom)))
+
   (let [result-atom (atom [])
         test-data (range 5)
-        [result resource-seq]
-        (resource/return-resource-context
+        {resource-seq :resource-seq
+         result :return-value}
+        (resource/return-resource-seq
          (->> test-data
               (map (fn [idx]
                      (do (resource/make-resource

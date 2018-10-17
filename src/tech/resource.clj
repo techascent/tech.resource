@@ -93,17 +93,30 @@ released when the context ends."
          (release-current-resources)))))
 
 
-(defmacro return-resource-context
-  "Run code an return both the return value and the resources the code created.
-  Returns [retval resource-seq].  Note these resources will need to be released."
-  [& body]
-  `(with-bindings {#'*resource-context* (atom (list))}
+(defmacro with-bound-resource-seq
+  "Run code and return both the return value and the (updated,appended) resources created.
+  Returns:
+  {:return-value retval
+  :resource-seq resources}"
+  [resource-seq & body]
+  ;;It is important the resources sequences is a list.
+  `(with-bindings {#'*resource-context* (atom (seq ~resource-seq))}
      (try
-      (let [retval# (do ~@body)]
-        [retval# @*resource-context*])
-      (catch Throwable e#
-        (release-current-resources)
-        (throw e#)))))
+       (let [retval# (do ~@body)]
+         {:return-value retval#
+          :resource-seq @*resource-context*})
+       (catch Throwable e#
+         (release-current-resources)
+         (throw e#)))))
+
+
+(defmacro return-resource-seq
+  "Run code and return both the return value and the resources the code created.
+  Returns:
+  {:return-value retval
+  :resource-seq resources}"
+  [& body]
+  `(with-bound-resource-seq (list) ~@body))
 
 
 (defrecord Releaser [release-fn!]
