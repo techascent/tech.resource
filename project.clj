@@ -1,4 +1,4 @@
-(defproject techascent/tech.resource "3.0-SNAPSHOT"
+(defproject techascent/tech.resource "3.0"
   :description "Exception-safe threadsafe resource management"
   :url "http://github.com/tech-ascent/tech.resource"
   :license {:name "Eclipse Public License"
