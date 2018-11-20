@@ -35,4 +35,16 @@
       (is (= 0 @counter))
       (System/gc)
       (Thread/sleep 100)
+      (is (= 0 @counter))))
+  (testing "gc-only resources get cleaned up"
+    (let [counter (atom 0)]
+      (let [create-fn (fn []
+                        (swap! counter inc)
+                        (gc-resource/track-gc-only (Object.)
+                                                   #(swap! counter dec)))
+            objects (vec (repeatedly 10 #(create-fn)))]
+        (is (= 10 @counter))
+        nil)
+      (System/gc)
+      (Thread/sleep 100)
       (is (= 0 @counter)))))

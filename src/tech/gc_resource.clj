@@ -2,12 +2,16 @@
   (:require [tech.resource :as resource])
   (:import [java.lang.ref ReferenceQueue]
            [java.lang Thread]
-           [tech.resource GCReference]))
+           [tech.resource GCReference]
+           [java.util IdentityHashMap Collections Set]
+           [java.util.function Function]))
 
 (set! *warn-on-reflection* true)
 
 
 (def ^:dynamic *reference-queue* (ReferenceQueue.))
+(def ^:dynamic *weak-reference-set* (-> (IdentityHashMap.)
+                                        (Collections/newSetFromMap)))
 
 
 (defn watch-reference-queue
@@ -55,14 +59,25 @@
   "Track this item using weak references.  Note that the dispose-fn must absolutely
   *not* reference the item else nothing will ever get released."
   [item dispose-fn]
-  (GCReference. item ^ReferenceQueue *reference-queue* dispose-fn)
-  item)
+  (let [gc-ref (GCReference. item ^ReferenceQueue *reference-queue*
+                             (proxy [Function] []
+                                 (apply [this-ref]
+                                        (locking *weak-reference-set*
+                                          (.remove ^Set *weak-reference-set* this-ref))
+                                   (dispose-fn))))]
+    ;;We have to keep track of the gc-ref else *it* will get cleaned up and the dispose
+    ;;fn will not get called!!
+    (locking *weak-reference-set*
+      (.add ^Set *weak-reference-set* gc-ref))
+    item))
 
 
 (defn track
   "Track an item via both the gc system *and* the stack based system.
 Dispose will be first-one-wins."
   [item dispose-fn]
-  (let [gc-ref (GCReference. item *reference-queue* dispose-fn)]
+  (let [gc-ref (GCReference. item *reference-queue* (proxy [Function] []
+                                                      (apply [this-ref]
+                                                        (dispose-fn))))]
     (resource/track gc-ref)
     item))

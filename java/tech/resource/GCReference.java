@@ -1,14 +1,14 @@
 package tech.resource;
 
 import java.lang.ref.*;
-import java.util.concurrent.Callable;
+import java.util.function.Function;
 
 
 
 public class GCReference extends WeakReference<Object>
 {
-  Callable disposer;
-  public GCReference( Object item, ReferenceQueue<Object> q, Callable _disposer)
+  Function<Object,Object> disposer;
+  public GCReference( Object item, ReferenceQueue<Object> q, Function<Object,Object> _disposer)
   {
     super(item, q);
     disposer = _disposer;
@@ -17,7 +17,7 @@ public class GCReference extends WeakReference<Object>
   {
     synchronized(this) {
       if(disposer != null) {
-	disposer.call();
+	disposer.apply(this);
 	disposer = null;
       }
     }
