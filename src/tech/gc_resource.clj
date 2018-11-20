@@ -34,19 +34,32 @@
   (println :tech.gc-resource "Reference queue exiting"))
 
 
+(defonce ^:dynamic *reference-thread* (atom nil))
+
+
 (defn start-reference-thread
   []
-  (let [run-atom (atom true)
-        thread (Thread. #(watch-reference-queue  run-atom *reference-queue*))]
-    (.start thread)
-    {:thread thread
-     :close-fn #(do
-                  (reset! run-atom false)
-                  (.join thread))}))
+  (when-not @*reference-thread*
+    (let [run-atom (atom true)
+          thread (Thread. #(watch-reference-queue  run-atom *reference-queue*))]
+      ;;Do not stop the jvm from exiting...
+      (.setDaemon thread true)
+      (.start thread)
+      (reset! *reference-thread*
+              {:thread thread
+               :close-fn #(do
+                            (reset! run-atom false)
+                            (.join thread))}))))
 
 
-(def ^:dynamic *reference-thread* (start-reference-thread))
+(defn stop-reference-thread
+  []
+  (when-let [close-fn (:close-fn @*reference-thread*)]
+    (close-fn)
+    (reset! *reference-thread* nil)))
 
+;;We will
+(start-reference-thread)
 
 (extend-protocol resource/PResource
   GCReference
