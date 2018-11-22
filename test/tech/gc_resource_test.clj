@@ -1,5 +1,5 @@
 (ns tech.gc_resource_test
-  (:require [tech.gc-resource :as gc-resource]
+  (:require [tech.resource.gc :as gc-resource]
             [tech.resource :as resource]
             [clojure.test :refer :all]))
 
@@ -9,8 +9,7 @@
     (let [counter (atom 0)]
       (let [create-fn (fn []
                         (swap! counter inc)
-                        (gc-resource/track (Object.) #(do
-                                                        (swap! counter dec))))]
+                        (resource/track (Object.) #(swap! counter dec) :gc))]
         (->> (repeatedly 100 #(create-fn))
              dorun)
         (is (= 100 @counter))
@@ -21,10 +20,10 @@
       (is (= 0 @counter))))
   (testing "resource context and system.gc work together"
     (let [counter (atom 0)]
-      (resource/with-resource-context
+      (resource/stack-resource-context
         (let [create-fn (fn []
                           (swap! counter inc)
-                          (gc-resource/track (Object.) #(swap! counter dec)))
+                          (resource/track (Object.) #(swap! counter dec) [:gc :stack]))
               objects (vec (repeatedly 100 #(create-fn)))]
           (is (= 100 @counter))
           (System/gc)
@@ -40,8 +39,7 @@
     (let [counter (atom 0)]
       (let [create-fn (fn []
                         (swap! counter inc)
-                        (gc-resource/track-gc-only (Object.)
-                                                   #(swap! counter dec)))
+                        (resource/track (Object.) #(swap! counter dec) :gc))
             objects (vec (repeatedly 10 #(create-fn)))]
         (is (= 10 @counter))
         nil)
