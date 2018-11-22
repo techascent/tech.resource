@@ -1,4 +1,4 @@
-'84;0;0c# tech.resource
+# tech.resource
 
 [![Clojars Project](https://img.shields.io/clojars/v/techascent/tech.resource.svg)](https://clojars.org/techascent/tech.resource)
 
