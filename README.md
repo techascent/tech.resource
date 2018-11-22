@@ -1,4 +1,4 @@
-# tech.resource
+'84;0;0c# tech.resource
 
 [![Clojars Project](https://img.shields.io/clojars/v/techascent/tech.resource.svg)](https://clojars.org/techascent/tech.resource)
 
@@ -29,7 +29,7 @@ Generic thread-safe and exception-safe non-gc or 'off heap' resource management.
 (let [f (resource/track (double-array [1 2 3]) #(println "disposed") :gc)]
   ...)
 ;;Disposed will print when the gc determins the double array is no longer
-reachable
+;;reachable
 ```
 
 Checkout the tests [stack](tests/tech/resource_test.clj) and 
