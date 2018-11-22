@@ -38,7 +38,7 @@
               (some #(identical? item %) @*resource-context*))
      (throw (ex-info "Duplicate track detected; this will result in a double free"
                      {:item item})))
-   (swap! *resource-context* conj [item item])
+   (swap! *resource-context* conj [item dispose-fn])
    item)
   ([item]
    (track item item)))

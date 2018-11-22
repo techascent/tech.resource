@@ -44,6 +44,6 @@ that does *not* reference item."
       (track-impl item dispose-fn track-type))))
 
 
-(defmacro with-stack-resource-context
+(defmacro stack-resource-context
   [& body]
   `(stack/with-resource-context ~@body))
