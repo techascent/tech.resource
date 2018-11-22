@@ -33,7 +33,7 @@ Generic thread-safe and exception-safe non-gc or 'off heap' resource management.
 ```
 
 Checkout the [stack](test/tech/resource_test.clj) and 
-[gc](test/tech/gc_resource_tests.clj) tests.
+[gc](test/tech/gc_resource_test.clj) tests.
 
 Distributed under the Eclipse Public License either version 1.0 or (at
 your option) any later version.  Complements of Tech Ascent, LLC.
