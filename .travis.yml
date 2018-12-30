@@ -1,1 +1,2 @@
 language: clojure
+lein: 2.8.1
