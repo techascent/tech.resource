@@ -6,6 +6,10 @@
 Generic thread-safe and exception-safe non-gc or 'off heap' resource management.
 
 
+[blog post](http://techascent.com/blog/generalized-resource-management.html)
+
+
+
 ```clojure
 ;;create the file
 (defn new-random-file
