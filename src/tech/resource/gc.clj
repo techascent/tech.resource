@@ -18,7 +18,7 @@
 (defn watch-reference-queue
   [run-atom ^ReferenceQueue reference-queue]
   (try
-    (println :tech.gc-resource "Reference thread starting")
+    (println :tech.resource.gc "Reference thread starting")
     (loop [continue? @run-atom]
       (when continue?
         (let [next-ref (.remove reference-queue 100)]
@@ -30,8 +30,8 @@
               (catch Throwable e nil)))
           (recur @run-atom))))
     (catch Throwable e
-      (println :tech.gc-resource "!!Error in reference queue!!:" e)))
-  (println :tech.gc-resource "Reference queue exiting"))
+      (println :tech.resource.gc "!!Error in reference queue!!:" e)))
+  (println :tech.resource.gc "Reference queue exiting"))
 
 
 (defonce ^:dynamic *reference-thread* (atom nil))
@@ -44,6 +44,7 @@
           thread (Thread. #(watch-reference-queue  run-atom *reference-queue*))]
       ;;Do not stop the jvm from exiting...
       (.setDaemon thread true)
+      (.setName thread "tech.resource.gc ref thread")
       (.start thread)
       (reset! *reference-thread*
               {:thread thread
