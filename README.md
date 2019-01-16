@@ -32,12 +32,23 @@ There is some more information on our [blog](http://techascent.com/blog/generali
 
 (let [f (resource/track (double-array [1 2 3]) #(println "disposed") :gc)]
   ...)
-;;Disposed will print when the gc determins the double array is no longer
+;;Disposed will print when the gc determines the double array is no longer
 ;;reachable
 ```
 
+
+There are now explicit methods to create either a weak or soft reference.
+For the differences, see 
+[here](https://stackoverflow.com/questions/299659/whats-the-difference-between-softreference-and-weakreference-in-java).
+
+* [documentation and implementation](https://github.com/techascent/tech.resource/blob/master/src/tech/resource/gc.clj).
+
+
 Checkout the [stack](test/tech/resource_test.clj) and 
 [gc](test/tech/gc_resource_test.clj) tests.
+
+
+
 
 Distributed under the Eclipse Public License either version 1.0 or (at
 your option) any later version.  Complements of Tech Ascent, LLC.
