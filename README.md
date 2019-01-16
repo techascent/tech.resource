@@ -41,7 +41,11 @@ There are now explicit methods to create either a weak or soft reference.
 For the differences, see 
 [here](https://stackoverflow.com/questions/299659/whats-the-difference-between-softreference-and-weakreference-in-java).
 
-* [documentation and implementation](https://github.com/techascent/tech.resource/blob/master/src/tech/resource/gc.clj).
+* [gc reference documentation and implementation](https://github.com/techascent/tech.resource/blob/master/src/tech/resource/gc.clj).
+* [stack documentation and implementation](https://github.com/techascent/tech.resource/blob/master/src/tech/resource/stack.clj).
+
+
+### Usage
 
 
 Checkout the [stack](test/tech/resource_test.clj) and 
