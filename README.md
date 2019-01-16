@@ -53,6 +53,10 @@ Checkout the [stack](test/tech/resource_test.clj) and
 
 
 
+Or take a giant leap and check out [tvm-clj](https://github.com/techascent/tvm-clj).
+
+
+
 
 Distributed under the Eclipse Public License either version 1.0 or (at
 your option) any later version.  Complements of Tech Ascent, LLC.
