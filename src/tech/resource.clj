@@ -9,7 +9,8 @@
   For GC resources, users must not reference the tracked object in the dispose function
   else the circular dependency will keep the object in the gc's live set"
   (:require [tech.resource.stack :as stack]
-            [tech.resource.gc :as gc]))
+            [tech.resource.gc :as gc])
+  (:import [java.io Closeable]))
 
 
 (defn- normalize-track-type
@@ -59,7 +60,8 @@ reference item."
     (let [dispose-fn (or dispose-fn item)]
       (when-not (or (satisfies? stack/PResource dispose-fn)
                     (fn? dispose-fn)
-                    (instance? Runnable dispose-fn))
+                    (instance? Runnable dispose-fn)
+                    (instance? Closeable dispose-fn))
         (throw (ex-info "The dispose method must implement PResource, be Runnable, or a
 clojure function."
                         {:dispose-fn dispose-fn})))

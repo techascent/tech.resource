@@ -1,7 +1,8 @@
 (ns tech.resource-test
   (:require [tech.resource :as resource]
             [tech.resource.stack :as stack]
-            [clojure.test :refer :all]))
+            [clojure.test :refer :all])
+  (:import [java.io Closeable]))
 
 (deftest basic-resource-management
   (let [result-atom (atom 1)]
@@ -25,3 +26,12 @@
     (stack/release-resource-seq resource-seq)
     ;;Resources are removed in reverse order.
     (is (= [4 3 2 1 0] @result-atom))))
+
+
+(deftest java-closeable-are-resources
+  (let [test-atom (atom 0)]
+    (resource/stack-resource-context
+     (resource/track (reify Closeable
+                       (close [this]
+                         (swap! test-atom inc)))))
+    (is (= 1 @test-atom))))
