@@ -10,7 +10,8 @@
   else the circular dependency will keep the object in the gc's live set"
   (:require [tech.resource.stack :as stack]
             [tech.resource.gc :as gc])
-  (:import [java.io Closeable]))
+  (:import [java.io Closeable]
+           [java.lang AutoCloseable]))
 
 
 (defn- normalize-track-type
@@ -58,10 +59,12 @@ reference item."
                       {:item item
                        :track-type track-type})))
     (let [dispose-fn (or dispose-fn item)]
-      (when-not (or (satisfies? stack/PResource dispose-fn)
+      (when-not (or (instance? Runnable dispose-fn)
+                    (instance? Closeable dispose-fn)
+                    (instance? AutoCloseable dispose-fn)
                     (fn? dispose-fn)
-                    (instance? Runnable dispose-fn)
-                    (instance? Closeable dispose-fn))
+                    (satisfies? stack/PResource dispose-fn)
+)
         (throw (ex-info "The dispose method must implement PResource, be Runnable, or a
 clojure function."
                         {:dispose-fn dispose-fn})))
