@@ -2,7 +2,8 @@
   "System for using both weak and soft references generically.  Weak references don't
   count for anything in the gc while soft references will keep their object alive as
   long as there is no gc pressure."
-  (:require [tech.resource.stack :as stack])
+  (:require [tech.resource.stack :as stack]
+            [clojure.tools.logging :as log])
   (:import [java.lang.ref ReferenceQueue]
            [java.lang Thread]
            [tech.resource GCReference GCSoftReference]
@@ -21,7 +22,7 @@
 (defn watch-reference-queue
   [run-atom ^ReferenceQueue reference-queue]
   (try
-    (println :tech.resource.gc "Reference thread starting")
+    (log/info "Reference thread starting")
     (loop [continue? @run-atom]
       (when continue?
         (let [next-ref (.remove reference-queue 100)]
@@ -33,8 +34,8 @@
               (catch Throwable e nil)))
           (recur @run-atom))))
     (catch Throwable e
-      (println :tech.resource.gc "!!Error in reference queue!!:" e)))
-  (println :tech.resource.gc "Reference queue exiting"))
+      (log/errorf e "!!Error in reference queue!!")))
+  (log/info "Reference queue exiting"))
 
 
 (defonce ^:dynamic *reference-thread* (atom nil))
