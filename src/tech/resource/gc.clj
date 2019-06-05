@@ -64,11 +64,12 @@
     (reset! *reference-thread* nil)))
 
 ;;We will
-(start-reference-thread)
+(def reference-thread (delay (start-reference-thread)))
 
 
 (defn- create-reference
   [item dispose-fn track-reference? ptr-constructor]
+  @reference-thread
   (let [retval (ptr-constructor item *reference-queue*
                                 (proxy [Function] []
                                   (apply [this-ref]
