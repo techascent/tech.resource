@@ -86,7 +86,7 @@
   (->> res-ctx
        (filter (comp pred first))
        ;;Avoid holding onto head.
-       (map (fn [[item dispose-fn]]
+       (map (fn [[_ dispose-fn]]
               (try
                 (do-release dispose-fn)
                 nil

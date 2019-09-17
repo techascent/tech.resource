@@ -25,7 +25,7 @@
 (defmulti track-impl
   "Internal implementation to differentiate between different forms of tracking
   resources."
-  (fn [item dispose-fn track-type]
+  (fn [_ _ track-type]
     track-type))
 
 

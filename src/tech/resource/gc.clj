@@ -31,7 +31,7 @@
               (stack/do-release next-ref)
               ;;We can't let a bad thing kill the thread.  Do release already prints
               ;;diagnostic information so that is sufficient for now.
-              (catch Throwable e nil)))
+              (catch Throwable _ nil)))
           (recur @run-atom))))
     (catch Throwable e
       (log/errorf e "!!Error in reference queue!!")))
