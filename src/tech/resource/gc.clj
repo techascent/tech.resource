@@ -71,12 +71,11 @@
   [item dispose-fn track-reference? ptr-constructor]
   @reference-thread
   (let [retval (ptr-constructor item *reference-queue*
-                                (proxy [Function] []
-                                  (apply [this-ref]
-                                    (when track-reference?
-                                      (locking *weak-reference-set*
-                                        (.remove ^Set *weak-reference-set* this-ref)))
-                                    (dispose-fn))))]
+                                (fn [this-ref]
+                                  (when track-reference?
+                                    (locking *weak-reference-set*
+                                      (.remove ^Set *weak-reference-set* this-ref)))
+                                  (dispose-fn)))]
     (when track-reference?
       (locking *weak-reference-set*
         (.add ^Set *weak-reference-set* retval)))

@@ -1,7 +1,7 @@
 package tech.resource;
 
 import java.lang.ref.*;
-import java.util.function.Function;
+import clojure.lang.IFn;
 import java.lang.Runnable;
 import clojure.lang.IDeref;
 
@@ -10,9 +10,9 @@ public class GCSoftReference
   extends SoftReference<Object>
   implements Runnable, IDeref
 {
-  Function<Object,Object> disposer;
+  IFn disposer;
   public GCSoftReference( Object item, ReferenceQueue<Object> q,
-		      Function<Object,Object> _disposer)
+			  IFn _disposer)
   {
     super(item, q);
     disposer = _disposer;
@@ -21,7 +21,7 @@ public class GCSoftReference
   {
     synchronized(this) {
       if(disposer != null) {
-	disposer.apply(this);
+	disposer.invoke(this);
 	disposer = null;
       }
     }
