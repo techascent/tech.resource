@@ -7,16 +7,16 @@
   (:import [java.lang.ref ReferenceQueue]
            [java.lang Thread]
            [tech.resource GCReference GCSoftReference]
-           [java.util IdentityHashMap Collections Set]
+           [java.util.concurrent ConcurrentHashMap]
+           [java.util Set Collections]
            [java.util.function Function]))
 
 
 (set! *warn-on-reflection* true)
 
 
-(def ^:dynamic *reference-queue* (ReferenceQueue.))
-(def ^:dynamic *weak-reference-set* (-> (IdentityHashMap.)
-                                        (Collections/newSetFromMap)))
+(def ^ReferenceQueue reference-queue (ReferenceQueue.))
+(def ^Set weak-reference-set (ConcurrentHashMap/newKeySet))
 
 
 (defn watch-reference-queue
@@ -38,19 +38,19 @@
   (log/info "Reference queue exiting"))
 
 
-(defonce ^:dynamic *reference-thread* (atom nil))
+(defonce reference-thread* (atom nil))
 
 
 (defn start-reference-thread
   []
-  (when-not @*reference-thread*
+  (when-not @reference-thread*
     (let [run-atom (atom true)
-          thread (Thread. #(watch-reference-queue  run-atom *reference-queue*))]
+          thread (Thread. #(watch-reference-queue  run-atom reference-queue))]
       ;;Do not stop the jvm from exiting...
       (.setDaemon thread true)
       (.setName thread "tech.resource.gc ref thread")
       (.start thread)
-      (reset! *reference-thread*
+      (reset! reference-thread*
               {:thread thread
                :close-fn #(do
                             (reset! run-atom false)
@@ -59,26 +59,24 @@
 
 (defn stop-reference-thread
   []
-  (when-let [close-fn (:close-fn @*reference-thread*)]
+  (when-let [close-fn (:close-fn @reference-thread*)]
     (close-fn)
-    (reset! *reference-thread* nil)))
+    (reset! reference-thread* nil)))
 
-;;We will
+
 (def reference-thread (delay (start-reference-thread)))
 
 
 (defn- create-reference
-  [item dispose-fn track-reference? ptr-constructor]
+  [item dispose-fn ptr-constructor]
+  ;;ensure the cleanup thread is running.
   @reference-thread
-  (let [retval (ptr-constructor item *reference-queue*
+
+  (let [retval (ptr-constructor item reference-queue
                                 (fn [this-ref]
-                                  (when track-reference?
-                                    (locking *weak-reference-set*
-                                      (.remove ^Set *weak-reference-set* this-ref)))
+                                  (.remove weak-reference-set this-ref)
                                   (dispose-fn)))]
-    (when track-reference?
-      (locking *weak-reference-set*
-        (.add ^Set *weak-reference-set* retval)))
+    (.add weak-reference-set retval)
     retval))
 
 
@@ -91,9 +89,8 @@
   IF track-reference is *true*, then the reference itself is added to the reference set.
   This keeps the reference itself from being gc'd.  This is not necessary if you know
   the reference will outlive the tracked object (or if you don't care)."
-  ^GCReference [item dispose-fn & {:keys [track-reference?]}]
-  (create-reference item dispose-fn track-reference?
-                    #(GCReference. %1 %2 %3)))
+  ^GCReference [item dispose-fn]
+  (create-reference item dispose-fn #(GCReference. %1 %2 %3)))
 
 
 (defn soft-reference
@@ -105,19 +102,16 @@
   If track-reference is *true*, then the reference itself is added to the reference set.
   This keeps the reference itself from being gc'd.  This is not necessary if you know
   the reference will outlive the tracked object (or if you don't care)."
-  ^GCSoftReference [item dispose-fn & {:keys [track-reference?]}]
-  (create-reference item dispose-fn track-reference?
-                    #(GCSoftReference. %1 %2 %3)))
+  ^GCSoftReference [item dispose-fn]
+  (create-reference item dispose-fn #(GCSoftReference. %1 %2 %3)))
 
 
 (defn track-gc-only
   "Track this item using weak references.  Note that the dispose-fn must absolutely
   *not* reference the item else nothing will ever get released."
   [item dispose-fn]
-  ;;We have to keep track of the gc-ref else *it* will get cleaned up and the dispose fn
-  ;;will not get called!!
-  (-> (gc-reference item dispose-fn :track-reference? true)
-      .get))
+  (gc-reference item dispose-fn)
+  item)
 
 
 (defn track
@@ -125,6 +119,6 @@
   first-one-wins.  Dispose-fn must not referent item else the circular dependency will
   stop the dispose-fn from being called."
   [item dispose-fn]
-  (->> (gc-reference item dispose-fn :track-reference? true)
+  (->> (gc-reference item dispose-fn)
        (stack/track item))
   item)

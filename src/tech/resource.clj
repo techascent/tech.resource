@@ -76,3 +76,10 @@ clojure function."
   will be released."
   [& body]
   `(stack/with-resource-context ~@body))
+
+
+(defn chain-gc-resources
+  "Chain an older resource to a newer (derived) one such that the older
+  resource cannot get cleaned up before the newer resource."
+  [old-resource new-resource]
+  (gc/track-gc-only new-resource (constantly old-resource)))
