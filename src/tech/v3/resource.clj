@@ -83,6 +83,8 @@ clojure function."
 
 (defn chain-resources
   "Chain an older resource to a newer (derived) one such that the older
-  resource cannot get cleaned up before the newer resource."
+  resource cannot go out of gc scope before the newer resource has.  This
+  allows you to create 'sub' objects and ensure parent objects cannot get
+  cleaned up before 'sub' objects."
   [new-resource old-resource]
   (gc/track-gc-only new-resource (constantly old-resource)))
