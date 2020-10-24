@@ -2,6 +2,8 @@
 
 [![Clojars Project](https://img.shields.io/clojars/v/techascent/tech.resource.svg)](https://clojars.org/techascent/tech.resource)
 
+[API Documentation](https://techascent.github.io/tech.resource/)
+
 
 Generic thread-safe and exception-safe non-gc or 'off heap' resource management.
 
