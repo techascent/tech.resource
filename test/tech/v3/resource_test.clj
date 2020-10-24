@@ -1,13 +1,13 @@
-(ns tech.resource-test
-  (:require [tech.resource :as resource]
-            [tech.resource.stack :as stack]
+(ns tech.v3.resource-test
+  (:require [tech.v3.resource :as resource]
+            [tech.v3.resource.stack :as stack]
             [clojure.test :refer :all])
   (:import [java.io Closeable]))
 
 (deftest basic-resource-management
   (let [result-atom (atom 1)]
     (resource/stack-resource-context
-      (resource/track #(swap! result-atom dec)))
+      (resource/track #(swap! result-atom dec) {:track-type :stack}))
     (is (= 0 @result-atom)))
 
   (let [result-atom (atom [])
@@ -18,7 +18,8 @@
          (->> test-data
               (map (fn [idx]
                      (do (resource/track
-                          #(swap! result-atom conj idx))
+                          #(swap! result-atom conj idx)
+                          {:track-type :stack})
                          idx)))
               doall))]
     (is (= (vec result) (vec test-data)))
@@ -33,5 +34,6 @@
     (resource/stack-resource-context
      (resource/track (reify Closeable
                        (close [this]
-                         (swap! test-atom inc)))))
+                         (swap! test-atom inc)))
+                     {:track-type :stack}))
     (is (= 1 @test-atom))))

@@ -1,6 +1,5 @@
-(ns tech.gc_resource_test
-  (:require [tech.resource.gc :as gc-resource]
-            [tech.resource :as resource]
+(ns tech.v3.gc-resource-test
+  (:require [tech.v3.resource :as resource]
             [clojure.test :refer :all]))
 
 
@@ -9,7 +8,8 @@
     (let [counter (atom 0)]
       (let [create-fn (fn []
                         (swap! counter inc)
-                        (resource/track (Object.) #(swap! counter dec) :gc))]
+                        (resource/track (Object.) {:dispose-fn #(swap! counter dec)
+                                                   :track-type :gc}))]
         (->> (repeatedly 100 #(create-fn))
              dorun)
         (is (= 100 @counter))
@@ -23,7 +23,8 @@
       (resource/stack-resource-context
         (let [create-fn (fn []
                           (swap! counter inc)
-                          (resource/track (Object.) #(swap! counter dec) [:gc :stack]))
+                          (resource/track (Object.) {:dispose-fn #(swap! counter dec)
+                                                     :track-type [:gc :stack]}))
               objects (vec (repeatedly 100 #(create-fn)))]
           (is (= 100 @counter))
           (System/gc)
@@ -39,7 +40,8 @@
     (let [counter (atom 0)]
       (let [create-fn (fn []
                         (swap! counter inc)
-                        (resource/track (Object.) #(swap! counter dec) :gc))
+                        (resource/track (Object.) {:dispose-fn #(swap! counter dec)
+                                                   :track-type :gc}))
             objects (vec (repeatedly 10 #(create-fn)))]
         (is (= 10 @counter))
         nil)

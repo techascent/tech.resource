@@ -1,8 +1,8 @@
-(ns tech.resource.gc
+(ns tech.v3.resource.gc
   "System for using both weak and soft references generically.  Weak references don't
   count for anything in the gc while soft references will keep their object alive as
   long as there is no gc pressure."
-  (:require [tech.resource.stack :as stack]
+  (:require [tech.v3.resource.stack :as stack]
             [clojure.tools.logging :as log])
   (:import [java.lang.ref ReferenceQueue]
            [java.lang Thread]
@@ -88,7 +88,11 @@
 
   IF track-reference is *true*, then the reference itself is added to the reference set.
   This keeps the reference itself from being gc'd.  This is not necessary if you know
-  the reference will outlive the tracked object (or if you don't care)."
+  the reference will outlive the tracked object (or if you don't care).
+
+  **Note** - Under situation of high garbage collector activity the caller *must* hold
+  a reference to item else it could get disposed of *during* this function call.
+  "
   ^GCReference [item dispose-fn]
   (create-reference item dispose-fn #(GCReference. %1 %2 %3)))
 
@@ -101,7 +105,10 @@
 
   If track-reference is *true*, then the reference itself is added to the reference set.
   This keeps the reference itself from being gc'd.  This is not necessary if you know
-  the reference will outlive the tracked object (or if you don't care)."
+  the reference will outlive the tracked object (or if you don't care).
+
+    **Note** - Under situation of high garbage collector activity the caller *must* hold
+  a reference to item else it could get disposed of *during* this function call."
   ^GCSoftReference [item dispose-fn]
   (create-reference item dispose-fn #(GCSoftReference. %1 %2 %3)))
 
@@ -116,9 +123,9 @@
 
 (defn track
   "Track an item via both the gc system *and* the stack based system.  Dispose will be
-  first-one-wins.  Dispose-fn must not referent item else the circular dependency will
+  first-one-wins.  Dispose-fn must not reference item else the circular dependency will
   stop the dispose-fn from being called."
   [item dispose-fn]
-  (->> (gc-reference item dispose-fn)
-       (stack/track item))
+  (-> (gc-reference item dispose-fn)
+      (stack/track))
   item)

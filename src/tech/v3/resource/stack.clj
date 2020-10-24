@@ -1,4 +1,4 @@
-(ns tech.resource.stack
+(ns tech.v3.resource.stack
   "Implementation of stack based resource system.  Simple, predictable, deterministic,
   and applicable to most problems.  Resource contexts are sequences of resources that
   need to be, at some point, released."
@@ -13,6 +13,7 @@
 
 
 (defonce ^:dynamic *resource-context* (atom (list)))
+(defonce ^:dynamic *bound-resource-context?* false)
 
 (def ^:dynamic *resource-debug-double-free* nil)
 
@@ -44,6 +45,9 @@
               (some #(identical? item %) @*resource-context*))
      (throw (ex-info "Duplicate track detected; this will result in a double free"
                      {:item item})))
+   (when-not *bound-resource-context?*
+     (log/warn "Stack resource tracking used but no resource context bound.
+This is probably a memory leak."))
    (swap! *resource-context* conj [item dispose-fn])
    item)
   ([item]
@@ -109,7 +113,8 @@
   "Begin a new resource context.  Any resources added while this context is open will be
   released when the context ends."
   [& body]
-  `(with-bindings {#'*resource-context* (atom (list))}
+  `(with-bindings {#'*resource-context* (atom (list))
+                   #'*bound-resource-context?* true}
      (try
        ~@body
        (finally
@@ -124,7 +129,8 @@
   :resource-seq resources}"
   [resource-seq & body]
   ;;It is important the resources sequences is a list.
-  `(with-bindings {#'*resource-context* (atom (seq ~resource-seq))}
+  `(with-bindings {#'*resource-context* (atom (seq ~resource-seq))
+                   #'*bound-resource-context?* true}
      (try
        (let [retval# (do ~@body)]
          {:return-value retval#
