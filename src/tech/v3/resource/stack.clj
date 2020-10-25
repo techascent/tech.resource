@@ -5,11 +5,8 @@
   (:require [clojure.tools.logging :as log])
   (:import [java.lang Runnable]
            [java.io Closeable]
-           [java.lang AutoCloseable]))
-
-
-(defprotocol PResource
-  (release-resource [item]))
+           [java.lang AutoCloseable]
+           [clojure.lang IFn]))
 
 
 (defonce ^:dynamic *resource-context* (atom (list)))
@@ -17,21 +14,21 @@
 
 (def ^:dynamic *resource-debug-double-free* nil)
 
-
 (defn do-release [item]
   (when item
     (try
       (cond
-        (satisfies? PResource item)
-        (release-resource item)
         (instance? Runnable item)
         (.run ^Runnable item)
         (instance? Closeable item)
         (.close ^Closeable item)
         (instance? AutoCloseable item)
         (.close ^AutoCloseable item)
+        (instance? IFn item)
+        (item)
         :else
-        (item))
+        (throw (Exception. (format "Item is not runnable, closeable, or an IFn: %s")
+                           (type item))))
       (catch Throwable e
         (log/errorf e "Failed to release %s" item)))))
 

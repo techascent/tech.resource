@@ -1,4 +1,4 @@
-(ns tech.v3.resource
+  (ns tech.v3.resource
   "System of calling functions with side effects when an object goes out of scope.  Scoping
   can be defined as gc-based scoping or stack-based scoping or a combination of the two of them
   in which case the behavior becomes 'release-no-later-than'.
@@ -63,10 +63,8 @@ reference item."
        (when-not (or (instance? Runnable dispose-fn)
                      (instance? Closeable dispose-fn)
                      (instance? AutoCloseable dispose-fn)
-                     (fn? dispose-fn)
-                     (satisfies? stack/PResource dispose-fn)
-                     )
-         (throw (ex-info "The dispose method must implement PResource, be Runnable, or a
+                     (fn? dispose-fn))
+         (throw (ex-info "The dispose method must implement be Runnable, Closeable, or a
 clojure function."
                          {:dispose-fn dispose-fn})))
        (track-impl item dispose-fn track-type))))
