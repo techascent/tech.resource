@@ -37,3 +37,9 @@
                          (swap! test-atom inc)))
                      {:track-type :stack}))
     (is (= 1 @test-atom))))
+
+
+(deftest auto-resource-context
+  (is (= #{:gc} (resource/normalize-track-type :auto)))
+  (resource/stack-resource-context
+   (is (= #{:stack} (resource/normalize-track-type :auto)))))

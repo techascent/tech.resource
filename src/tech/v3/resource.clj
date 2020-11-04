@@ -1,4 +1,4 @@
-  (ns tech.v3.resource
+(ns tech.v3.resource
   "System of calling functions with side effects when an object goes out of scope.  Scoping
   can be defined as gc-based scoping or stack-based scoping or a combination of the two of them
   in which case the behavior becomes 'release-no-later-than'.
@@ -10,13 +10,6 @@
   (:import [java.io Closeable]
            [java.lang AutoCloseable]))
 
-
-(defn- normalize-track-type
-  [track-type]
-  (let [track-type (or track-type :gc)]
-    (if (keyword? track-type)
-      #{track-type}
-      (set track-type))))
 
 
 (defmulti ^:private track-impl
@@ -40,6 +33,26 @@
   [item dispose-fn _]
   (gc/track item dispose-fn))
 
+(defn in-stack-resource-context?
+  "Returns true if the current running code is inside a stack
+  resource context."
+  []
+  stack/*bound-resource-context?*)
+
+
+(defn ^:no-doc normalize-track-type
+  [track-type]
+  (let [track-type (or track-type :gc)]
+    (cond
+      (= track-type :auto)
+      (if (in-stack-resource-context?)
+        #{:stack}
+        #{:gc})
+      (keyword? track-type)
+      #{track-type}
+      :else
+      (set track-type))))
+
 
 (defn track
   "Track a resource.  If the item inherents from PResource or is a clojure fn, or a
@@ -50,7 +63,17 @@
   Using stack-based resource tracking when there is no stack resource context open
   will generate a warning every time as it guarantees a memory leak.
 
-  Track types can be :gc, :stack, or [:gc :stack] with :gc being the default tracking type."
+
+
+  Options:
+
+  * `:tracking-type` - Track types can be :gc, :stack, [:gc :stack] or :auto with :gc being the default
+     tracking type.
+
+     * `:gc` - Cleanup will be called just after the original object is garbage collected.
+     * `:stack` - Get cleaned up when the stack resource context is cleaned up.  This means a stack
+        returns context must be open.
+     * `:auto`: Will use stack if a stack is open and gc if one is not."
   ([item {:keys [track-type dispose-fn]}]
    (let [track-type (normalize-track-type track-type)]
      (when (and (contains? track-type :gc)
@@ -82,7 +105,16 @@ clojure function."
 (defn chain-resources
   "Chain an older resource to a newer (derived) one such that the older
   resource cannot go out of gc scope before the newer resource has.  This
-  allows you to create 'sub' objects and ensure parent objects cannot get
-  cleaned up before 'sub' objects."
+  allows you to create 'sub' objects and ensure the parent object cannot get
+  cleaned up before 'sub' objects.
+
+
+  This is a very costly way of doing this and if misused it can lead to false
+  OOM situations.  The reason is that the link to the parent object is only broken
+  *after* the GC run so it takes as many gc runs as the depth of the object graph so
+  your code can easily create object graphs faster than it will cause gc runs.
+
+  Because of this it is much better to just have a member variable that points back
+  to the parent."
   [new-resource old-resource]
   (gc/track-gc-only new-resource (constantly old-resource)))
