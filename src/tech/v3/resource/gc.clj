@@ -8,8 +8,7 @@
            [java.lang Thread]
            [tech.resource GCReference GCSoftReference]
            [java.util.concurrent ConcurrentHashMap]
-           [java.util Set Collections]
-           [java.util.function Function]))
+           [java.util Set]))
 
 
 (set! *warn-on-reflection* true)

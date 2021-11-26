@@ -27,8 +27,8 @@
         (instance? IFn item)
         (item)
         :else
-        (throw (Exception. (format "Item is not runnable, closeable, or an IFn: %s")
-                           (type item))))
+        (throw (Exception. (format "Item is not runnable, closeable, or an IFn: %s"
+                                   (type item)))))
       (catch Throwable e
         (log/errorf e "Failed to release %s" item)))))
 

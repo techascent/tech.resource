@@ -1,6 +1,6 @@
 (ns tech.v3.gc-resource-test
   (:require [tech.v3.resource :as resource]
-            [clojure.test :refer :all]))
+            [clojure.test :refer [deftest is testing]]))
 
 
 (deftest gc-resources
@@ -42,7 +42,7 @@
                         (swap! counter inc)
                         (resource/track (Object.) {:dispose-fn #(swap! counter dec)
                                                    :track-type :gc}))
-            objects (vec (repeatedly 10 #(create-fn)))]
+            _objects (vec (repeatedly 10 #(create-fn)))]
         (is (= 10 @counter))
         nil)
       (System/gc)
