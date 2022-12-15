@@ -39,6 +39,16 @@
     (is (= 1 @test-atom))))
 
 
+(deftest releasing!
+  (let [test-atom (atom 0)]
+    (resource/releasing!
+     (resource/track (reify Closeable
+                       (close [this]
+                         (swap! test-atom inc)))
+                     {:track-type :stack}))
+    (is (= 1 @test-atom))))
+
+
 (deftest auto-resource-context
   (is (= #{:gc} (resource/normalize-track-type :auto)))
   (resource/stack-resource-context

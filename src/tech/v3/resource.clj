@@ -102,6 +102,13 @@ clojure function."
   `(stack/with-resource-context ~@body))
 
 
+(defmacro releasing!
+  "Stole this name from Neanderthal - this is just a far better and faster thing to write.
+  Synonym for [[stack-resource-context]]."
+  [& body]
+  `(stack/with-resource-context ~@body))
+
+
 (defn chain-resources
   "Chain an older resource to a newer (derived) one such that the older
   resource cannot go out of gc scope before the newer resource has.  This
