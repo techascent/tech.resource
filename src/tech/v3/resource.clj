@@ -103,8 +103,8 @@ clojure function."
 
 
 (defmacro releasing!
-  "Stole this name from Neanderthal - this is just a far better and faster thing to write.
-  Synonym for [[stack-resource-context]]."
+  "Resources allocated within this stack frame will be released when
+  this code returns. Synonym for [[stack-resource-context]]."
   [& body]
   `(stack/with-resource-context ~@body))
 
