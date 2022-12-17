@@ -8,7 +8,10 @@
   (:require [tech.v3.resource.stack :as stack]
             [tech.v3.resource.gc :as gc])
   (:import [java.io Closeable]
-           [java.lang AutoCloseable]))
+           [clojure.lang IDeref]
+           [java.lang AutoCloseable]
+           [java.util Map]
+           [java.util.concurrent.atomic AtomicReference]))
 
 
 
@@ -42,7 +45,7 @@
 
 (defn ^:no-doc normalize-track-type
   [track-type]
-  (let [track-type (or track-type :gc)]
+  (let [track-type (or track-type :auto)]
     (cond
       (= track-type :auto)
       (if (in-stack-resource-context?)
@@ -67,7 +70,7 @@
 
   Options:
 
-  * `:tracking-type` - Track types can be :gc, :stack, [:gc :stack] or :auto with :gc being the default
+  * `:track-type` - Track types can be :gc, :stack, [:gc :stack] or :auto with :auto being the default
      tracking type.
 
      * `:gc` - Cleanup will be called just after the original object is garbage collected.
@@ -121,7 +124,96 @@ clojure function."
   *after* the GC run so it takes as many gc runs as the depth of the object graph so
   your code can easily create object graphs faster than it will cause gc runs.
 
-  Because of this it is much better to just have a member variable that points back
-  to the parent."
+  Because of this it is much better to just have a member variable or metadata
+  that points back to the parent."
   [new-resource old-resource]
   (gc/track-gc-only new-resource (constantly old-resource)))
+
+
+(defprotocol Bindable
+  (execute-with-bound! [this ifn]
+    "Bind this object to be the current resource context and execute function."))
+
+
+(extend-protocol Bindable
+  nil
+  (execute-with-bound! [this ifn] (ifn))
+  Map
+  (execute-with-bound! [this ifn]
+    (if-let [ctx (this ::resource-context)]
+      (execute-with-bound! ctx ifn)
+      (throw (RuntimeException. (str "Map does not appear to have a resource context:\n"
+                                     (pr-str this)))))))
+
+
+(defn ^:no-doc make-closeable!
+  [rv res-seq]
+  (let [res (AtomicReference. (or res-seq (list)))]
+    (reify
+      java.lang.AutoCloseable
+      (close [this]
+        (locking this
+          (when-let [cur-res (.getAndSet res nil)]
+            (stack/release-resource-seq cur-res))))
+      Bindable
+      (execute-with-bound! [this ifn]
+        (locking this
+          (let [retval (volatile! nil)]
+            (.getAndUpdate res (reify java.util.function.UnaryOperator
+                                 (apply [this cur-res]
+                                   (when-not cur-res
+                                     (throw (RuntimeException. "Resources have been closed.")))
+                                   (let [{:keys [return-value resource-seq]}
+                                         (stack/with-bound-resource-seq cur-res (ifn))]
+                                     (vreset! retval return-value)
+                                     resource-seq))))
+            @retval)))
+      IDeref
+      (deref [this] rv))))
+
+
+(defmacro closeable!
+  "Run code in a context and then return that context as a java.util.AutoCloseable.
+
+  Run more code in the current stack context by using [[with-bound!]] - thus potentially
+  binding more objects to the current resource context.
+
+  All objects released tracked with this context bound with track-type :stack or :auto will
+  be released when the returned object is `close`d.  The returned object is derefable and
+  when derefed returns the return value of the code ran during its creation.
+
+```clojure
+user> (def res (resource/closeable! (let [v (atom 1)]
+                                      (resource/track v {:dispose-fn #(swap! v dec)}))))
+#'user/res
+user> @res
+#<Atom@34bc01ac: 1>
+user> (resource/with-bound! res (let [v (atom 2)] (resource/track v {:dispose-fn #(swap! v inc)})))
+
+#<Atom@2d0f007c: 2>
+user> (.close res)
+nil
+user> *2
+#<Atom@2d0f007c: 3>
+user> res
+#<resource$make_closeable_BANG_$reify__8490@48ce3240: #<Atom@34bc01ac: 0>>
+user> (.close res)
+nil
+user> (resource/with-bound! res (let [v (atom 2)] (resource/track v {:dispose-fn #(swap! v inc)})))
+
+Execution error at tech.v3.resource$make_closeable_BANG_$reify$reify__8491/apply (form-init143758951282771418.clj:164).
+Resources have been closed.
+```"
+  ^java.lang.AutoCloseable [& body]
+  `(let [{return-value# :return-value
+          resource-seq# :resource-seq} (stack/return-resource-seq ~@body)]
+     (make-closeable! return-value# resource-seq#)))
+
+
+(defmacro with-bound!
+  "Bind a closeable object as the current resource context.
+  Returns the return value of body.
+
+  See documentation for [[closeable!]]."
+  [c & body]
+  `(execute-with-bound! ~c (fn [] ~@body)))
