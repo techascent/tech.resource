@@ -6,10 +6,14 @@
   (:import [java.lang Runnable]
            [java.io Closeable]
            [java.lang AutoCloseable]
-           [clojure.lang IFn]))
+           [clojure.lang IFn]
+           [java.util ArrayList Collections]))
+
+(set! *warn-on-reflection* true)
 
 
-(defonce ^:dynamic *resource-context* (atom (list)))
+(defonce ^{:dynamic true
+           :tag ArrayList} *resource-context* (ArrayList.))
 (defonce ^:dynamic *bound-resource-context?* false)
 
 (def ^:dynamic *resource-debug-double-free* nil)
@@ -45,7 +49,8 @@
    (when-not *bound-resource-context?*
      (log/warn "Stack resource tracking used but no resource context bound.
 This is probably a memory leak."))
-   (swap! *resource-context* conj [item dispose-fn])
+   (locking *resource-context*
+     (.add *resource-context* [item dispose-fn]))
    item)
   ([item]
    (track item item)))
@@ -55,13 +60,13 @@ This is probably a memory leak."))
   "Ignore these resources for which pred returns true and do not track them.
   They will not be released unless added again with track"
   [pred]
-  (loop [resources @*resource-context*]
-    (let [retval (filter (comp pred first) resources)
-          leftover (->> (remove (comp pred first) resources)
-                        doall)]
-      (if-not (compare-and-set! *resource-context* resources leftover)
-        (recur @*resource-context*)
-        retval))))
+  (locking *resource-context*
+    (let [^ArrayList retval (.clone *resource-context*)]
+      (.removeIf *resource-context* (reify java.util.function.Predicate
+                                      (test [this val] (boolean (pred (first val))))))
+      (.removeIf retval (reify java.util.function.Predicate
+                          (test [this val] (boolean (not (pred (first val)))))))
+      retval)))
 
 
 (defn ignore
@@ -75,24 +80,25 @@ This is probably a memory leak."))
   "Release this resource and remove it from tracking.  Exceptions propagate to callers."
   [item]
   (when item
-    (let [release-list (first (ignore-resources #(= item %)))]
-      (when release-list
-        (do-release (ffirst release-list))))))
+    (reduce (fn [acc entry]
+              (do-release (second entry)))
+            nil
+            (ignore-resources #(= item %)))))
+
 
 
 (defn release-resource-seq
   "Release a resource context returned from return-resource-context."
-  [res-ctx & {:keys [pred]
-              :or {pred identity}}]
-  (->> res-ctx
-       (filter (comp pred first))
-       ;;Avoid holding onto head.
-       (map (fn [[_ dispose-fn]]
-              (try
-                (do-release dispose-fn)
-                nil
-                (catch Throwable e e))))
-       doall))
+  [res-ctx & {:keys [pred]}]
+  (Collections/reverse res-ctx)
+  (if pred
+    (reduce (fn [acc entry]
+              (when (pred (nth entry 0))
+                (do-release (nth entry 1))))
+            nil res-ctx)
+    (reduce (fn [acc entry]
+              (do-release (nth entry 1)))
+            nil res-ctx)))
 
 
 (defn release-current-resources
@@ -100,17 +106,21 @@ This is probably a memory leak."))
   Returns any exceptions that happened during release but continues to attempt to
   release anything else in the resource list."
   ([pred]
-   (let [leftover (ignore-resources pred)]
-     (release-resource-seq leftover)))
-  ([]
-   (release-current-resources (constantly true))))
+   (->> (if pred
+          (ignore-resources pred)
+          (locking *resource-context*
+            (let [rv (.clone *resource-context*)]
+              (.clear *resource-context*)
+              rv)))
+        (release-resource-seq)))
+  ([] (release-current-resources nil)))
 
 
 (defmacro with-resource-context
   "Begin a new resource context.  Any resources added while this context is open will be
   released when the context ends."
   [& body]
-  `(with-bindings {#'*resource-context* (atom (list))
+  `(with-bindings {#'*resource-context* (ArrayList.)
                    #'*bound-resource-context?* true}
      (try
        ~@body
@@ -126,12 +136,12 @@ This is probably a memory leak."))
   :resource-seq resources}"
   [resource-seq & body]
   ;;It is important the resources sequences is a list.
-  `(with-bindings {#'*resource-context* (atom (seq ~resource-seq))
+  `(with-bindings {#'*resource-context* (ArrayList. ^Collection ~resource-seq)
                    #'*bound-resource-context?* true}
      (try
        (let [retval# (do ~@body)]
          {:return-value retval#
-          :resource-seq @*resource-context*})
+          :resource-seq *resource-context*})
        (catch Throwable e#
          (release-current-resources)
          (throw e#)))))
@@ -143,4 +153,4 @@ This is probably a memory leak."))
   {:return-value retval
   :resource-seq resources}"
   [& body]
-  `(with-bound-resource-seq (list) ~@body))
+  `(with-bound-resource-seq [] ~@body))
