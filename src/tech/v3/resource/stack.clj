@@ -127,6 +127,12 @@ This is probably a memory leak."))
        (finally
          (release-current-resources)))))
 
+(defn ^:no-doc alist
+  ^ArrayList [data]
+  (if data 
+    (ArrayList. ^java.util.Collection data)
+    (ArrayList.)))
+
 
 (defmacro with-bound-resource-seq
   "Run code and return both the return value and the (updated,appended) resources
@@ -136,7 +142,7 @@ This is probably a memory leak."))
   :resource-seq resources}"
   [resource-seq & body]
   ;;It is important the resources sequences is a list.
-  `(with-bindings {#'*resource-context* (ArrayList. ^Collection ~resource-seq)
+  `(with-bindings {#'*resource-context* (alist ~resource-seq)
                    #'*bound-resource-context?* true}
      (try
        (let [retval# (do ~@body)]
